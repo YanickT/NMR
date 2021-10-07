@@ -56,7 +56,7 @@ def measure(sample, b0, tfactor, phases):
             # rotate M_z and add imag to M_xy
             diff = np.sin(phases[t, 3]) * (amplitude_t1 - unready)
             for x, y in zip(*np.nonzero(amplitudes)):
-                signal_phase[x, y] = diff[x, y] / amplitudes[x, y]
+                signal_phase[x, y] += diff[x, y] / amplitudes[x, y]
             amplitudes += diff
 
             unready += (1 - np.cos(phases[t, 3])) * (amplitude_t1 - unready)
@@ -86,19 +86,6 @@ if __name__ == "__main__":
     b0 = np.zeros(sample.shape[:2])
     b0.fill(0.43)
     b0 += np.random.normal(0, 0.01, b0.shape)
-
-    """HERE"""
-    t = 125  # ms
-    tfactor = 2
-    ts = np.linspace(0, t, t * tfactor, True)  # get times of the sample frequency
-    phases = np.zeros((t * tfactor, 4))
-    phases[0, 3] = np.pi / 2  # 90 pulse
-
-    sig_inhomo = measure(sample, b0, tfactor, phases)
-    ani = animation.ArtistAnimation(FIG, FRAMES, interval=10, blit=False, repeat_delay=1000)
-    ani.save("movie.gif", fps=10)
-    plt.show()
-    """HERE"""
 
     pause_time = 1000  # ms  Time between the different measurements
     echo_time = 20  # ms  Has to be smaller than pause_time / 2
