@@ -9,11 +9,11 @@ np.random.seed(12345)
 GAMMA = 2.6752218744
 INT2REAL = 10.5 / 305
 
-FRAMES = []
-FIG, AX = plt.subplots()
+#FRAMES = []
+#FIG, AX = plt.subplots()
 
 
-# @njit(cache=True)
+@njit(cache=True)
 def measure(sample, b0, tfactor, phases):
     """
 
@@ -52,14 +52,14 @@ def measure(sample, b0, tfactor, phases):
         # check for pulses
         if phases[t, 3] != 0:
             # rotate M_xy
+            amplitudes *= np.abs(np.cos(phases[t, 3]))
             signal_phase = (2 * phases[t, 3] - signal_phase) % (2 * np.pi)
             # rotate M_z and add imag to M_xy
             diff = np.sin(phases[t, 3]) * (amplitude_t1 - unready)
             for x, y in zip(*np.nonzero(amplitudes)):
-                signal_phase[x, y] += diff[x, y] / amplitudes[x, y]
+                signal_phase[x, y] /= (1 + diff[x, y] / amplitudes[x, y])
             amplitudes += diff
-
-            unready += (1 - np.cos(phases[t, 3])) * (amplitude_t1 - unready)
+            unready += min((1 - np.cos(phases[t, 3])), 1) * (amplitude_t1 - unready)
 
         # add to signal
         signal[t] = np.sum(amplitudes * np.exp(1j * signal_phase))
@@ -68,14 +68,14 @@ def measure(sample, b0, tfactor, phases):
         signal_phase += omegas / tfactor
 
         # funny animation
-        signals = amplitudes * np.exp(1j * signal_phase)
+        """signals = amplitudes * np.exp(1j * signal_phase)
         temp = []
         non_zeros = np.nonzero(signals)
         temp += [AX.text(0.5, 1.05, f"Time {t / tfactor}", size=plt.rcParams["axes.titlesize"], ha="center", transform=AX.transAxes)]
         for x, y in zip(*non_zeros):
             temp += AX.plot([0, signals[x, y].real], [0, signals[x, y].imag])
         FRAMES.append(temp)
-        print(t)
+        print(t)"""
 
     return np.real(signal)
 
@@ -88,8 +88,7 @@ if __name__ == "__main__":
     b0 += np.random.normal(0, 0.01, b0.shape)
 
     pause_time = 1000  # ms  Time between the different measurements
-    echo_time = 20  # ms  Has to be smaller than pause_time / 2
-    recovery_time_step = 10  # ms  Time between the 90 degree pulses
+    recovery_time_step = 5  # ms  Time between the 90 degree pulses
     points = 5
     tfactor = 2  # how many steps per 1ms
 
@@ -97,21 +96,19 @@ if __name__ == "__main__":
 
     # phases = [Gradx, Grady, Gradz, Pulse]
     phases = np.zeros((t * tfactor, 4))
+    get_indices = []  # used to get the data we need
     time = 0
     for i in range(points):
-        phases[tfactor * time, 3] = np.pi / 2  # first 90 degree pulse
+        phases[tfactor * time, 3] = np.pi  # first 180 degree pulse
         time += recovery_time_step * (i + 1)
         phases[tfactor * time, 3] = np.pi / 2  # sec 90 degree pulse
-        phases[tfactor * (time + echo_time), 3] = np.pi
+        get_indices.append(list(range(time, time + pause_time)))
         time += pause_time
 
-    ts = np.linspace(0, t, t * tfactor, True)
     signal = measure(sample, b0, tfactor, phases)
-
-    plt.plot(ts, signal)
+    plt.plot(signal)
     plt.show()
-
-    # ani = animation.ArtistAnimation(FIG, FRAMES, interval=10, blit=False, repeat_delay=1000)
+    #ani = animation.ArtistAnimation(FIG, FRAMES, interval=10, blit=False, repeat_delay=1000)
     #ani.save("movie.gif", fps=10)
     #plt.show()
 
