@@ -15,7 +15,8 @@ In the Jupyter notebooks, which can be found in the `experiments` directory, som
 simulation.
 
 In `basics.ipynb`, I briefly describe the differences between the simulation
-and a real measurement. I also briefly outline the basics of NMR.
+and a real measurement. I also briefly outline the basics of NMR. 
+(`basics.ipynb` is not ready yet and just a sketch)
 
 
 A script for the Fourier-transformation `numba_ft.py` was taken from:
