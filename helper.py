@@ -17,10 +17,10 @@ def create_example(size=100, radius=10):
     image[rs, cs, 2] = 112  # t2 layer ms
 
     # second sample (water)
-    # rs, cs = draw.disk((half_size, half_size + radius), radius, shape=None)
-    # image[rs, cs, 0] = 2  # density layer
-    # image[rs, cs, 1] = 3269  # t1 layer ms
-    # image[rs, cs, 2] = 1214  # t2 layer ms
+    rs, cs = draw.disk((half_size, half_size + radius), radius, shape=None)
+    image[rs, cs, 0] = 1  # density layer
+    image[rs, cs, 1] = 3269  # t1 layer ms
+    image[rs, cs, 2] = 1214  # t2 layer ms
 
     return image
 
@@ -45,5 +45,5 @@ def view_phase(np_array, tfactor):
 if __name__ == "__main__":
     img = create_example()
     view(img)
-    np.save("sample", img)
+    np.save("sample2", img)
 

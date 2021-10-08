@@ -1,27 +1,19 @@
-from typing import Union
 from numba import njit
-from helper import view, view_phase
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-np.random.seed(12345)
 
 GAMMA = 2.6752218744
 INT2REAL = 10.5 / 305
-
-#FRAMES = []
-#FIG, AX = plt.subplots()
 
 
 @njit(cache=True)
 def measure(sample, b0, tfactor, phases):
     """
-
-    :param sample:
-    :param b0:
-    :param tfactor:
-    :param phases:
-    :return:
+    Performe a measurement of sample. Simulates NMR.
+    :param sample: np.array[x, y, [density, t1, t2]] = 3D array representing the sample
+    :param b0: np.array[x, y] = magnetic field (Do not forget the noise ;) )
+    :param tfactor: int = number of steps per ms
+    :param phases: np.array[t, [Gradx, Grady, Gradz, Pulse]] = 2D Array specifying the measurement process
+    :return: np.array[signal] = 1D array carrying the measured signal.
     """
     t1s = sample[:, :, 1]
     amplitude_t1 = sample[:, :, 0].astype(np.float32) * INT2REAL
@@ -41,7 +33,16 @@ def measure(sample, b0, tfactor, phases):
 
     for t in range(phases.shape[0]):
         # determine frequencies
-        omegas = np.ones(sample.shape[:2]) * GAMMA * b0  # HIER GREIFEN DIE GRADIENTEN
+        b0_ = np.copy(b0)
+        if phases[t, 0] != 0:
+            for x in range(b0_.shape[1]):
+                b0_[:, x] += phases[t, 0] * x
+
+        if phases[t, 1] != 0:
+            for y in range(b0_.shape[0]):
+                b0_[y, :] += phases[t, 1] * y
+
+        omegas = np.ones(sample.shape[:2]) * GAMMA * b0_
 
         # update amplitude in z direction (T1)
         unready *= t1_factor
@@ -67,48 +68,4 @@ def measure(sample, b0, tfactor, phases):
         # update phase
         signal_phase += omegas / tfactor
 
-        # funny animation
-        """signals = amplitudes * np.exp(1j * signal_phase)
-        temp = []
-        non_zeros = np.nonzero(signals)
-        temp += [AX.text(0.5, 1.05, f"Time {t / tfactor}", size=plt.rcParams["axes.titlesize"], ha="center", transform=AX.transAxes)]
-        for x, y in zip(*non_zeros):
-            temp += AX.plot([0, signals[x, y].real], [0, signals[x, y].imag])
-        FRAMES.append(temp)
-        print(t)"""
-
     return np.real(signal)
-
-
-if __name__ == "__main__":
-    sample = np.load("sample.npy")
-
-    b0 = np.zeros(sample.shape[:2])
-    b0.fill(0.43)
-    b0 += np.random.normal(0, 0.01, b0.shape)
-
-    pause_time = 1000  # ms  Time between the different measurements
-    recovery_time_step = 5  # ms  Time between the 90 degree pulses
-    points = 5
-    tfactor = 2  # how many steps per 1ms
-
-    t = pause_time * points + recovery_time_step * (points ** 2 + points) // 2  # ms
-
-    # phases = [Gradx, Grady, Gradz, Pulse]
-    phases = np.zeros((t * tfactor, 4))
-    get_indices = []  # used to get the data we need
-    time = 0
-    for i in range(points):
-        phases[tfactor * time, 3] = np.pi  # first 180 degree pulse
-        time += recovery_time_step * (i + 1)
-        phases[tfactor * time, 3] = np.pi / 2  # sec 90 degree pulse
-        get_indices.append(list(range(time, time + pause_time)))
-        time += pause_time
-
-    signal = measure(sample, b0, tfactor, phases)
-    plt.plot(signal)
-    plt.show()
-    #ani = animation.ArtistAnimation(FIG, FRAMES, interval=10, blit=False, repeat_delay=1000)
-    #ani.save("movie.gif", fps=10)
-    #plt.show()
-
