@@ -2,7 +2,6 @@ from numba import njit
 import numpy as np
 
 GAMMA = 2.6752218744
-INT2REAL = 10.5 / 305
 
 
 @njit(cache=True)
@@ -16,7 +15,7 @@ def measure(sample, b0, tfactor, phases):
     :return: np.array[signal] = 1D array carrying the measured signal.
     """
     t1s = sample[:, :, 1]
-    amplitude_t1 = sample[:, :, 0].astype(np.float32) * INT2REAL
+    amplitude_t1 = sample[:, :, 0].astype(np.float32)
     unready = np.zeros(amplitude_t1.shape, dtype=np.float32)
     t1_factor = np.zeros(t1s.shape[:2])
     for x, y in zip(*np.nonzero(t1s)):

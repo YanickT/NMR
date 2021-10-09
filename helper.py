@@ -7,17 +7,17 @@ LAYERS = ["Density", "T1", "T2"]
 PHASES = ["$Grad_x$", "$Grad_y$", "$Grad_z$", "Pulse", "Read"]
 
 
-def create_example(size=100, radius=10):
+def create_example(size=100, radius=10, sep=0):
     half_size = size // 2
     image = np.zeros((size, size, 3), dtype=np.uint16)
     # first sample (oil)
-    rs, cs = draw.disk((half_size, half_size - radius), radius, shape=None)
+    rs, cs = draw.disk((half_size, half_size - radius - sep), radius, shape=None)
     image[rs, cs, 0] = 1  # density layer
     image[rs, cs, 1] = 114  # t1 layer ms
     image[rs, cs, 2] = 112  # t2 layer ms
 
     # second sample (water)
-    rs, cs = draw.disk((half_size, half_size + radius), radius, shape=None)
+    rs, cs = draw.disk((half_size, half_size + radius + sep), radius, shape=None)
     image[rs, cs, 0] = 1  # density layer
     image[rs, cs, 1] = 3269  # t1 layer ms
     image[rs, cs, 2] = 1214  # t2 layer ms
@@ -43,7 +43,7 @@ def view_phase(np_array, tfactor):
 
 
 if __name__ == "__main__":
-    img = create_example()
+    img = create_example(size=300, radius=30, sep=1)
     view(img)
-    np.save("sample2", img)
+    np.save("sample2_modi", img)
 
