@@ -28,6 +28,7 @@ At the moment notebooks regarding:
 - measurement of T<sub>1</sub>
 - measurement of T<sub>2</sub>
 - measurement of a 1D profile
+- measurement of a 1D profile with T<sub>1</sub> time
 
 are available.
 

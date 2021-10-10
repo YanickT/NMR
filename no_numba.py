@@ -22,6 +22,7 @@ def measure(sample, b0, tfactor, phases, ani=False):
 
     t1s = sample[:, :, 1]
     amplitude_t1 = sample[:, :, 0].astype(np.float32)
+    amplitude_t1 /= np.sum(amplitude_t1)
     unready = np.zeros(amplitude_t1.shape, dtype=np.float32)
     t1_factor = np.exp(np.divide(-1, t1s * tfactor), out=np.zeros(t1s.shape[:2]), where=(t1s != 0))
 
