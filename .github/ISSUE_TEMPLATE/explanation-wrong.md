@@ -14,7 +14,7 @@ A clear and concise description of what the problem is.
 A clear and concise description of what you want the statement to be.
 
 **Source**
-Optional a source were to check it up
+Optional a source where to check it up
 
 **Additional context**
-Add any other context or screenshots about the feature request here.
+Add any other context or screenshots about the request here.
