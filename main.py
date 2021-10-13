@@ -2,16 +2,18 @@ from numba import njit
 import numpy as np
 
 GAMMA = 2.6752218744
+ALPHA = 0.1
 
 
 @njit(cache=True)
-def measure(sample, b0, tfactor, phases):
+def measure(sample, b0, tfactor, phases, f_larmor):
     """
     Performe a measurement of sample. Simulates NMR.
     :param sample: np.array[x, y, [density, t1, t2]] = 3D array representing the sample
     :param b0: np.array[x, y] = magnetic field (Do not forget the noise ;) )
     :param tfactor: int = number of steps per ms
     :param phases: np.array[t, [Gradx, Grady, Gradz, Pulse]] = 2D Array specifying the measurement process
+    :param f_larmor: float = Excitation frequency
     :return: np.array[signal] = 1D array carrying the measured signal.
     """
     t1s = sample[:, :, 1]
@@ -33,16 +35,17 @@ def measure(sample, b0, tfactor, phases):
 
     for t in range(phases.shape[0]):
         # determine frequencies
-        b0_ = np.copy(b0)
-        if phases[t, 0] != 0:
-            for x in range(b0_.shape[1]):
-                b0_[:, x] += phases[t, 0] * x
+        if t == 0 or np.any(phases[t, :] != phases[t - 1, :]):
+            b0_ = np.copy(b0)
+            if phases[t, 0] != 0:
+                for x in range(b0_.shape[1]):
+                    b0_[:, x] += phases[t, 0] * x
 
-        if phases[t, 1] != 0:
-            for y in range(b0_.shape[0]):
-                b0_[y, :] += phases[t, 1] * y
+            if phases[t, 1] != 0:
+                for y in range(b0_.shape[0]):
+                    b0_[y, :] += phases[t, 1] * y
 
-        omegas = np.ones(sample.shape[:2]) * GAMMA * b0_
+            omegas = np.ones(sample.shape[:2]) * GAMMA * b0_
 
         # update amplitude in z direction (T1)
         unready *= t1_factor
@@ -52,15 +55,14 @@ def measure(sample, b0, tfactor, phases):
 
         # check for pulses
         if phases[t, 3] != 0:
+            fac = np.exp(- ALPHA * np.abs(omegas/f_larmor - 1))
             # rotate M_xy
-            amplitudes *= np.abs(np.cos(phases[t, 3]))
-            signal_phase = (2 * phases[t, 3] - signal_phase) % (2 * np.pi)
+            amplitudes *= np.abs(np.cos(phases[t, 3])) * fac
+            signal_phase *= np.cos(phases[t, 3]) * fac
+
             # rotate M_z and add imag to M_xy
-            diff = np.sin(phases[t, 3]) * (amplitude_t1 - unready)
-            for x, y in zip(*np.nonzero(amplitudes)):
-                signal_phase[x, y] /= (1 + diff[x, y] / amplitudes[x, y])
-            amplitudes += diff
-            unready += min((1 - np.cos(phases[t, 3])), 1) * (amplitude_t1 - unready)
+            amplitudes += np.sin(phases[t, 3]) * (amplitude_t1 - unready) * fac
+            unready += min((1 - np.cos(phases[t, 3])), 1) * (amplitude_t1 - unready) * fac
 
         # add to signal
         signal[t] = np.sum(amplitudes * np.exp(1j * signal_phase))
