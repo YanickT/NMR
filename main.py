@@ -1,7 +1,7 @@
 from numba import njit
 import numpy as np
 
-GAMMA = 2.6752218744
+GAMMA = 2.6752218744e2 / (2 * np.pi)
 ALPHA = 0.1
 
 
@@ -37,15 +37,32 @@ def measure(sample, b0, tfactor, phases, f_larmor):
         # determine frequencies
         if t == 0 or np.any(phases[t, :] != phases[t - 1, :]):
             b0_ = np.copy(b0)
+
+            # Gradient x
             if phases[t, 0] != 0:
                 for x in range(b0_.shape[1]):
-                    b0_[:, x] += phases[t, 0] * x
+                    b0_[:, x] += phases[t, 0] * (x - b0_.shape[1] // 2)
 
+            # Gradient y
             if phases[t, 1] != 0:
                 for y in range(b0_.shape[0]):
-                    b0_[y, :] += phases[t, 1] * y
+                    b0_[y, :] += phases[t, 1] * (y + b0_.shape[0] // 2)
 
-            omegas = np.ones(sample.shape[:2]) * GAMMA * b0_
+            omegas = GAMMA * b0_
+            omegas_t = omegas / tfactor
+
+            # check for pulses
+            if phases[t, 3] != 0:
+                # excitation (this must have a good equation but the exponent will work for now)
+                fac = np.exp(- ALPHA * np.abs(omegas / f_larmor - 1))
+
+                # rotate M_xy
+                amplitudes *= np.abs(np.cos(phases[t, 3])) * fac
+                signal_phase *= np.cos(phases[t, 3]) * fac
+
+                # rotate M_z and add imag to M_xy
+                amplitudes += np.sin(phases[t, 3]) * (amplitude_t1 - unready) * fac
+                unready += min((1 - np.cos(phases[t, 3])), 1) * (amplitude_t1 - unready) * fac
 
         # update amplitude in z direction (T1)
         unready *= t1_factor
@@ -53,21 +70,10 @@ def measure(sample, b0, tfactor, phases, f_larmor):
         # update amplitude in xy-plane (T2)
         amplitudes *= t2_factor
 
-        # check for pulses
-        if phases[t, 3] != 0:
-            fac = np.exp(- ALPHA * np.abs(omegas/f_larmor - 1))
-            # rotate M_xy
-            amplitudes *= np.abs(np.cos(phases[t, 3])) * fac
-            signal_phase *= np.cos(phases[t, 3]) * fac
-
-            # rotate M_z and add imag to M_xy
-            amplitudes += np.sin(phases[t, 3]) * (amplitude_t1 - unready) * fac
-            unready += min((1 - np.cos(phases[t, 3])), 1) * (amplitude_t1 - unready) * fac
-
         # add to signal
         signal[t] = np.sum(amplitudes * np.exp(1j * signal_phase))
 
         # update phase
-        signal_phase += omegas / tfactor
+        signal_phase += omegas_t
 
-    return np.real(signal)
+    return signal
